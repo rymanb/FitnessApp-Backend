@@ -1,0 +1,13 @@
+# Environments
+.env
+
+# Go binaries
+/fitness-backend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# OS specific files
+.DS_Store
