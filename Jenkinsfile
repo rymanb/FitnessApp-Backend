@@ -18,19 +18,16 @@ pipeline {
 
         stage('Test') {
             steps {
-                // Start the test database container
                 sh '''
                     POSTGRES_USER=postgres POSTGRES_PASSWORD=password123 POSTGRES_DB=fitnessapp \
                     docker-compose up -d test_db
                 '''
-                // Wait up to 30s for Postgres to be ready
                 sh '''
                     for i in $(seq 1 15); do
                         docker-compose exec -T test_db pg_isready -U postgres && break
                         sleep 2
                     done
                 '''
-                // Run all tests with coverage
                 sh 'go test -p 1 ./... -cover'
             }
             post {
@@ -40,35 +37,27 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                sh 'docker build -t $ECR_REGISTRY/fitness-backend:$IMAGE_TAG -t $ECR_REGISTRY/fitness-backend:latest .'
-            }
-        }
-
-        stage('Push to ECR') {
-            steps {
-                sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
-                sh 'docker push $ECR_REGISTRY/fitness-backend:$IMAGE_TAG'
-                sh 'docker push $ECR_REGISTRY/fitness-backend:latest'
-            }
-        }
-
         stage('Deploy') {
             steps {
                 sshagent(credentials: ['backend-ec2-key']) {
+                    // Copy source code to backend server
+                    sh 'rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ec2-user@$BACKEND_IP:/home/ec2-user/app/'
+                    // Build image and run on backend server
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@$BACKEND_IP \
-                            "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY && \
-                            docker pull $ECR_REGISTRY/fitness-backend:latest && \
-                            docker stop fitness-backend || true && \
-                            docker rm fitness-backend || true && \
+                        ssh -o StrictHostKeyChecking=no ec2-user@$BACKEND_IP "
+                            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY &&
+                            docker build -t $ECR_REGISTRY/fitness-backend:$IMAGE_TAG -t $ECR_REGISTRY/fitness-backend:latest /home/ec2-user/app/ &&
+                            docker push $ECR_REGISTRY/fitness-backend:$IMAGE_TAG &&
+                            docker push $ECR_REGISTRY/fitness-backend:latest &&
+                            docker stop fitness-backend || true &&
+                            docker rm fitness-backend || true &&
                             docker run -d \
                                 --name fitness-backend \
                                 --restart always \
                                 -p 8080:8080 \
                                 --env-file /home/ec2-user/app.env \
-                                $ECR_REGISTRY/fitness-backend:latest"
+                                $ECR_REGISTRY/fitness-backend:latest
+                        "
                     '''
                 }
             }
@@ -77,10 +66,6 @@ pipeline {
     }
 
     post {
-        always {
-            sh 'docker rmi $ECR_REGISTRY/fitness-backend:$IMAGE_TAG || true'
-            sh 'docker rmi $ECR_REGISTRY/fitness-backend:latest || true'
-        }
         success {
             echo "Deployment successful. Build ${env.BUILD_NUMBER} is live."
         }
