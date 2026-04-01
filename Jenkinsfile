@@ -4,7 +4,6 @@ pipeline {
     environment {
         AWS_REGION   = 'us-east-1'
         ECR_REGISTRY = credentials('ECR_REGISTRY')
-        ECR_REPO     = "${ECR_REGISTRY}/fitness-backend"
         IMAGE_TAG    = "${env.BUILD_NUMBER}"
         BACKEND_IP   = credentials('BACKEND_EC2_IP')
     }
@@ -48,36 +47,35 @@ pipeline {
         stage('Build') {
             steps {
                 dir('fitness-backend') {
-                    sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} -t ${ECR_REPO}:latest ."
+                    sh 'docker build -t $ECR_REGISTRY/fitness-backend:$IMAGE_TAG -t $ECR_REGISTRY/fitness-backend:latest .'
                 }
             }
         }
 
         stage('Push to ECR') {
             steps {
-                sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
-                sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
-                sh "docker push ${ECR_REPO}:latest"
+                sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
+                sh 'docker push $ECR_REGISTRY/fitness-backend:$IMAGE_TAG'
+                sh 'docker push $ECR_REGISTRY/fitness-backend:latest'
             }
         }
 
         stage('Deploy') {
             steps {
                 sshagent(credentials: ['backend-ec2-key']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ec2-user@${BACKEND_IP} '
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY} &&
-                            docker pull ${ECR_REPO}:latest &&
-                            docker stop fitness-backend || true &&
-                            docker rm fitness-backend || true &&
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ec2-user@$BACKEND_IP \
+                            "aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY && \
+                            docker pull $ECR_REGISTRY/fitness-backend:latest && \
+                            docker stop fitness-backend || true && \
+                            docker rm fitness-backend || true && \
                             docker run -d \
                                 --name fitness-backend \
                                 --restart always \
                                 -p 8080:8080 \
                                 --env-file /home/ec2-user/app.env \
-                                ${ECR_REPO}:latest
-                        '
-                    """
+                                $ECR_REGISTRY/fitness-backend:latest"
+                    '''
                 }
             }
         }
@@ -86,9 +84,8 @@ pipeline {
 
     post {
         always {
-            // Clean up local images to keep Jenkins disk usage low
-            sh "docker rmi ${ECR_REPO}:${IMAGE_TAG} || true"
-            sh "docker rmi ${ECR_REPO}:latest || true"
+            sh 'docker rmi $ECR_REGISTRY/fitness-backend:$IMAGE_TAG || true'
+            sh 'docker rmi $ECR_REGISTRY/fitness-backend:latest || true'
         }
         success {
             echo "Deployment successful. Build ${env.BUILD_NUMBER} is live."
