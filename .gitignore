@@ -12,3 +12,6 @@
 /cmd/scraper
 # OS specific files
 .DS_Store
+
+.vscode/
+.claude/
