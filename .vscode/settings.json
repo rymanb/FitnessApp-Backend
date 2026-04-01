@@ -1,5 +1,0 @@
-{
-  "go.testEnvFile": "${workspaceFolder}/.env.test",
-  "go.testFlags": ["-v", "-p", "1"],
-  "go.testTimeout": "60s"
-}
