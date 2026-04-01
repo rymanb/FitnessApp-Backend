@@ -41,6 +41,7 @@ pipeline {
             steps {
                 sshagent(credentials: ['backend-ec2-key']) {
                     // Copy source code to backend server
+                    sh 'ssh -vvv -o StrictHostKeyChecking=no ec2-user@$BACKEND_IP echo connected || true'
                     sh 'rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ec2-user@$BACKEND_IP:/home/ec2-user/app/'
                     // Build image and run on backend server
                     sh '''
