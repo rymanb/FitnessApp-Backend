@@ -18,37 +18,31 @@ pipeline {
 
         stage('Test') {
             steps {
-                dir('fitness-backend') {
-                    // Start the test database container
-                    sh '''
-                        POSTGRES_USER=postgres POSTGRES_PASSWORD=password123 \
-                        docker-compose up -d test_db
-                    '''
-                    // Wait up to 30s for Postgres to be ready
-                    sh '''
-                        for i in $(seq 1 15); do
-                            docker-compose exec -T test_db pg_isready -U postgres && break
-                            sleep 2
-                        done
-                    '''
-                    // Run all tests with coverage
-                    sh 'go test -p 1 ./... -cover'
-                }
+                // Start the test database container
+                sh '''
+                    POSTGRES_USER=postgres POSTGRES_PASSWORD=password123 POSTGRES_DB=fitnessapp \
+                    docker-compose up -d test_db
+                '''
+                // Wait up to 30s for Postgres to be ready
+                sh '''
+                    for i in $(seq 1 15); do
+                        docker-compose exec -T test_db pg_isready -U postgres && break
+                        sleep 2
+                    done
+                '''
+                // Run all tests with coverage
+                sh 'go test -p 1 ./... -cover'
             }
             post {
                 always {
-                    dir('fitness-backend') {
-                        sh 'docker-compose stop test_db && docker-compose rm -f test_db'
-                    }
+                    sh 'docker-compose stop test_db && docker-compose rm -f test_db'
                 }
             }
         }
 
         stage('Build') {
             steps {
-                dir('fitness-backend') {
-                    sh 'docker build -t $ECR_REGISTRY/fitness-backend:$IMAGE_TAG -t $ECR_REGISTRY/fitness-backend:latest .'
-                }
+                sh 'docker build -t $ECR_REGISTRY/fitness-backend:$IMAGE_TAG -t $ECR_REGISTRY/fitness-backend:latest .'
             }
         }
 
