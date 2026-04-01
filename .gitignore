@@ -1,5 +1,6 @@
 # Environments
 .env
+.env.test
 
 # Go binaries
 /fitness-backend
@@ -8,6 +9,6 @@
 *.dll
 *.so
 *.dylib
-
+/cmd/scraper
 # OS specific files
 .DS_Store
