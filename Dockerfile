@@ -20,6 +20,8 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 COPY --from=builder /app/server .
+COPY --from=builder /app/sql ./sql
+COPY --from=builder /app/exercises.json .
 
 EXPOSE 8080
 
