@@ -49,8 +49,7 @@ pipeline {
                             docker build -t $ECR_REGISTRY/fitness-backend:$IMAGE_TAG -t $ECR_REGISTRY/fitness-backend:latest /home/ec2-user/app/ &&
                             docker push $ECR_REGISTRY/fitness-backend:$IMAGE_TAG &&
                             docker push $ECR_REGISTRY/fitness-backend:latest &&
-                            docker stop fitness-backend || true &&
-                            docker rm fitness-backend || true &&
+                            docker rm -f fitness-backend || true &&
                             docker run -d \
                                 --name fitness-backend \
                                 --restart always \
