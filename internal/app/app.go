@@ -55,6 +55,7 @@ func Setup() *fiber.App {
 	protected.Post("/settings/sync", settings.SyncSettings)
 
 	protected.Post("/chat", ai.ChatCoach)
+	protected.Get("/ai/usage", ai.GetTokenUsage)
 
 	return app
 }

@@ -39,7 +39,7 @@ func Connect() {
 // Migrate runs all SQL migration files in order. Each file uses IF NOT EXISTS /
 // ON CONFLICT guards so it is safe to run on every startup.
 func Migrate() {
-	migrations := []string{"001_init.sql", "002_prompts.sql", "003_history_duration.sql", "004_settings.sql"}
+	migrations := []string{"001_init.sql", "002_prompts.sql", "003_history_duration.sql", "004_settings.sql", "005_daily_token_usage.sql"}
 	for _, file := range migrations {
 		sqlBytes, err := findMigrationFile(file)
 		if err != nil {

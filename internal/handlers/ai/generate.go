@@ -17,6 +17,17 @@ import (
 // structured JSON schema, and validates all returned exercise names against the
 // known exercise list. It retries up to 3 times if the AI returns invalid names.
 func GeneratePlan(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+
+	used, _ := getDailyTokensUsed(userID)
+	if used >= dailyTokenLimit {
+		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+			"error":       "daily_limit_reached",
+			"tokens_used": used,
+			"daily_limit": dailyTokenLimit,
+		})
+	}
+
 	var req GeneratePlanReq
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
@@ -54,10 +65,12 @@ func GeneratePlan(c *fiber.Ctx) error {
 
 		if bad := invalidExercisesInJSON(rawJSON); len(bad) == 0 {
 			if resp.UsageMetadata != nil {
+				total := int(resp.UsageMetadata.TotalTokenCount)
 				fmt.Printf("Token usage (plan): input=%d output=%d total=%d\n",
 					resp.UsageMetadata.PromptTokenCount,
 					resp.UsageMetadata.CandidatesTokenCount,
-					resp.UsageMetadata.TotalTokenCount)
+					total)
+				addDailyTokens(userID, total)
 			}
 			break
 		} else {

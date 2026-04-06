@@ -26,6 +26,15 @@ import (
 func ChatCoach(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 
+	used, _ := getDailyTokensUsed(userID)
+	if used >= dailyTokenLimit {
+		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+			"error":       "daily_limit_reached",
+			"tokens_used": used,
+			"daily_limit": dailyTokenLimit,
+		})
+	}
+
 	var body struct {
 		History    []ChatMessage `json:"history"`
 		NewMessage string        `json:"newMessage"`
@@ -281,10 +290,12 @@ func runToolLoop(ctx context.Context, session *genai.ChatSession, resp *genai.Ge
 			}
 
 			if current.UsageMetadata != nil {
+				total := int(current.UsageMetadata.TotalTokenCount)
 				fmt.Printf("Token usage (chat): input=%d output=%d total=%d\n",
 					current.UsageMetadata.PromptTokenCount,
 					current.UsageMetadata.CandidatesTokenCount,
-					current.UsageMetadata.TotalTokenCount)
+					total)
+				addDailyTokens(userID, total)
 			}
 
 			return json.Marshal(fc.Args)
