@@ -232,7 +232,7 @@ func chatTools() *genai.Tool {
 										Properties: map[string]*genai.Schema{
 											"name":        {Type: genai.TypeString},
 											"sets":        {Type: genai.TypeInteger},
-											"target_reps": {Type: genai.TypeString},
+											"target_reps": {Type: genai.TypeInteger, Description: "Recommended rep count as a plain number, e.g. 8, 10, 12"},
 										},
 									},
 								},

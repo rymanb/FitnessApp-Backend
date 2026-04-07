@@ -36,10 +36,14 @@ func Setup() *fiber.App {
 		})
 	})
 
+	// Web redirect page — turns the https link into an app deep link
+	app.Get("/share/:shareId", plans.ShareRedirect)
+
 	api := app.Group("/api/v1")
 
 	// Public routes
 	api.Post("/auth/google", auth.GoogleAuth)
+	api.Get("/plans/shared/:shareId", plans.GetSharedPlan)
 
 	// Protected routes — require a valid JWT
 	protected := api.Group("/", middleware.Protected())
@@ -47,6 +51,7 @@ func Setup() *fiber.App {
 	protected.Get("/plans", plans.GetPlans)
 	protected.Post("/plans/sync", plans.SyncPlans)
 	protected.Post("/plans/generate", ai.GeneratePlan)
+	protected.Post("/plans/:planId/share", plans.SharePlan)
 
 	protected.Get("/history", history.GetHistory)
 	protected.Post("/history/sync", history.SyncHistory)
